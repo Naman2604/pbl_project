@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPark AI | B.Tech Major Project</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap');
+        
+        body { 
+            background-color: #050511; 
+            color: #f8fafc; 
+            font-family: 'Space Grotesk', sans-serif; 
+            overflow-x: hidden;
+        }
+        
+        /* Modern UI Elements */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 255, 0.1); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .text-gradient { 
+            background: linear-gradient(135deg, #06b6d4, #6366f1); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        
+        .code-window {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            overflow: hidden;
+        }
+        
+        .code-header {
+            background: #1e293b;
+            padding: 8px 16px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        /* Presentation Timer */
+        #presenter-timer { 
+            background: rgba(5, 5, 17, 0.9); 
+            border: 2px solid #06b6d4; 
+            backdrop-filter: blur(10px);
+        }
+        .timer-alert { border-color: #ef4444 !important; color: #ef4444; animation: pulse-border 1s infinite; }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+        /* Scroll Animations */
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body onload="initPresentation()">
+
+    <div id="presenter-timer" class="fixed bottom-6 right-6 px-6 py-3 rounded-2xl flex items-center gap-5 z-50 shadow-2xl transition-all duration-300">
+        <div class="flex flex-col text-right">
+            <span class="text-[9px] uppercase font-bold text-slate-400 tracking-[0.2em]">Live Presentation</span>
+            <span id="time-display" class="text-3xl font-bold tracking-tighter">00:00</span>
+        </div>
+        <i class="fas fa-video text-xl text-cyan-400 animate-pulse"></i>
+    </div>
+
+    <nav class="fixed w-full z-40 glass-panel border-b-0 px-8 py-4 flex justify-between items-center top-0">
+        <div class="flex items-center gap-4">
+            <div class="bg-cyan-950 p-1 rounded h-10 w-10 flex items-center justify-center border border-cyan-500/30">
+                <i class="fas fa-parking text-cyan-400 text-xl"></i>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xl font-bold tracking-tight leading-none">Smart<span class="text-cyan-400">Park</span> AI</span>
+                <span class="text-[8px] text-slate-400 uppercase tracking-widest mt-1">Computer Vision Infrastructure</span>
+            </div>
+        </div>
+        <div class="hidden md:flex gap-8 text-[10px] uppercase font-bold tracking-widest text-slate-400">
+            <a href="#vision" class="hover:text-cyan-400 transition">Overview</a>
+            <a href="#architecture" class="hover:text-cyan-400 transition">Architecture</a>
+            <a href="#integration" class="hover:text-cyan-400 transition">Integration</a>
+            <a href="#future" class="hover:text-cyan-400 transition">Future Scope</a>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 space-y-40 pb-40 pt-32">
+        
+        <section id="vision" class="min-h-[80vh] flex flex-col justify-center items-center text-center reveal">
+            <div class="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span></span>
+                Live Project System
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tighter mb-6 leading-[1.1]">
+                AI-BASED SMART PARKING <br>
+                <span class="text-gradient">MONITORING SYSTEM</span>
+            </h1>
+            <p class="text-lg text-slate-400 max-w-3xl font-light leading-relaxed mb-12">
+                A real-time intelligent infrastructure module utilizing <strong>CCTV video feeds, Computer Vision, and a React web dashboard</strong> to automatically detect, analyze, and visualize parking space occupancy.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="https://secure-rent-nest.lovable.app/" target="_blank" class="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-full font-bold uppercase tracking-widest text-xs transition shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2">
+                    <i class="fas fa-video"></i> View Live Dashboard
+                </a>
+                <a href="#architecture" class="px-8 py-4 glass-panel hover:bg-white/5 text-white rounded-full font-bold uppercase tracking-widest text-xs transition flex items-center gap-2">
+                    <i class="fas fa-network-wired"></i> System Pipeline
+                </a>
+            </div>
+        </section>
+
+        <section id="architecture" class="space-y-16 reveal">
+            <div class="text-center">
+                <h2 class="text-4xl md:text-5xl font-bold uppercase tracking-tight">The <span class="text-cyan-400">5-Layer</span> Architecture</h2>
+                <p class="text-slate-400 mt-4 max-w-2xl mx-auto">Replacing manual parking supervision with an end-to-end automated machine learning pipeline.</p>
+            </div>
+            
+            
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+                <div class="glass-panel p-8 rounded-[2rem] border-t-4 border-indigo-500 group">
+                    <i class="fas fa-camera text-3xl text-indigo-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">1. Video Input Layer</h3>
+                    <p class="text-sm text-slate-400">Continuous live CCTV/Webcam feed captured. Frames are extracted and processed live via OpenCV.</p>
+                </div>
+                
+                <div class="glass-panel p-8 rounded-[2rem] border-t-4 border-cyan-400 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-cyan-500/5 translate-y-full group-hover:translate-y-0 transition duration-500"></div>
+                    <i class="fas fa-brain text-3xl text-cyan-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">2. AI Detection Layer</h3>
+                    <p class="text-sm text-slate-400">Computer vision pipeline analyzes frames. Vehicles are detected and mapped to specific parking slot coordinates.</p>
+                </div>
+
+                <div class="glass-panel p-8 rounded-[2rem] border-t-4 border-emerald-400 group">
+                    <i class="fas fa-chart-pie text-3xl text-emerald-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">3. Analytics Engine</h3>
+                    <p class="text-sm text-slate-400">Calculates total, occupied, and available slots in real-time. Computes overall occupancy rate percentages.</p>
+                </div>
+
+                <div class="glass-panel p-8 rounded-[2rem] border-t-4 border-blue-500 group lg:col-span-1 md:col-span-2">
+                    <i class="fas fa-server text-3xl text-blue-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">4. Flask Backend</h3>
+                    <p class="text-sm text-slate-400 mb-3">Serves as the bridge. Streams processed video and exposes the Analytics API.</p>
+                    <div class="bg-black/50 p-3 rounded font-mono text-[10px] text-cyan-300">
+                        GET /video_feed → Live Stream<br>
+                        GET /api/stats → Real-time JSON Data
+                    </div>
+                </div>
+
+                <div class="glass-panel p-8 rounded-[2rem] border-t-4 border-purple-500 group lg:col-span-2 md:col-span-2">
+                    <i class="fab fa-react text-3xl text-purple-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">5. React Dashboard Layer</h3>
+                    <p class="text-sm text-slate-400">Modern interactive UI built with TypeScript and Tailwind CSS. Features live CCTV rendering, animating analytics cards, and AI status indicators.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="integration" class="grid lg:grid-cols-2 gap-12 reveal">
+            <div class="space-y-8 flex flex-col justify-center">
+                <div class="inline-block px-3 py-1 bg-cyan-900/30 text-cyan-400 border border-cyan-500/30 rounded text-xs font-bold uppercase tracking-widest">Core Achievement</div>
+                <h2 class="text-4xl font-bold uppercase tracking-tight">Full-Stack <br><span class="text-gradient">AI Integration</span></h2>
+                <p class="text-slate-400 leading-relaxed">
+                    The most critical achievement of this project is the seamless synchronization between the Python vision engine and the web frontend. 
+                </p>
+                
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-exchange-alt text-cyan-400"></i>
+                        <span class="text-slate-300"><strong>Data Pipeline:</strong> Camera → OpenCV → Flask → React → Browser</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i class="fas fa-bolt text-cyan-400"></i>
+                        <span class="text-slate-300"><strong>Live Payload:</strong> Each processed frame instantly updates the dashboard state without refreshing.</span>
+                    </li>
+                </ul>
+
+                <div class="p-5 glass-panel rounded-xl border-l-4 border-cyan-500">
+                    <p class="text-sm italic text-slate-300">"This is no longer a basic static project. It is a fully functioning Intelligent Transportation System (ITS) module."</p>
+                </div>
+            </div>
+
+            <div class="code-window shadow-2xl">
+                <div class="code-header">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="ml-2 text-[10px] text-slate-400">app.py (Flask Backend)</span>
+                </div>
+                <div class="p-6 text-slate-300 leading-relaxed whitespace-pre overflow-x-auto">
+<span class="text-purple-400">from</span> flask <span class="text-purple-400">import</span> Flask, Response, jsonify
+<span class="text-purple-400">import</span> cv2
+<span class="text-purple-400">from</span> detection_engine <span class="text-purple-400">import</span> process_frame
+
+app = Flask(__name__)
+camera = cv2.VideoCapture(<span class="text-green-300">'parking_feed.mp4'</span>)
+
+<span class="text-slate-500"># Real-time Analytics State</span>
+current_stats = { <span class="text-green-300">"total"</span>: <span class="text-orange-400">50</span>, <span class="text-green-300">"occupied"</span>: <span class="text-orange-400">0</span>, <span class="text-green-300">"available"</span>: <span class="text-orange-400">50</span> }
+
+<span class="text-blue-400">@app.route</span>(<span class="text-green-300">'/api/stats'</span>)
+<span class="text-purple-400">def</span> <span class="text-blue-400">get_stats</span>():
+    <span class="text-slate-500"># React fetches this endpoint every second</span>
+    <span class="text-purple-400">return</span> jsonify(current_stats)
+
+<span class="text-blue-400">@app.route</span>(<span class="text-green-300">'/video_feed'</span>)
+<span class="text-purple-400">def</span> <span class="text-blue-400">video_feed</span>():
+    <span class="text-slate-500"># Streams processed OpenCV frames to React</span>
+    <span class="text-purple-400">return</span> Response(generate_frames(), 
+                    mimetype=<span class="text-green-300">'multipart/x-mixed-replace; boundary=frame'</span>)
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel p-10 rounded-[3rem] reveal border-t-4 border-indigo-500">
+            <h3 class="text-2xl font-bold uppercase text-center mb-8 tracking-widest text-slate-300">Real-Time Processing Workflow</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 text-center">
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <i class="fas fa-video text-2xl text-cyan-400 mb-2"></i>
+                    <p class="text-xs font-bold text-slate-300">1. Capture</p>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <i class="fas fa-search text-2xl text-indigo-400 mb-2"></i>
+                    <p class="text-xs font-bold text-slate-300">2. Detect</p>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <i class="fas fa-calculator text-2xl text-purple-400 mb-2"></i>
+                    <p class="text-xs font-bold text-slate-300">3. Calculate</p>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                    <i class="fas fa-desktop text-2xl text-emerald-400 mb-2"></i>
+                    <p class="text-xs font-bold text-slate-300">4. Visualize</p>
+                </div>
+            </div>
+            
+            <div class="h-[300px] w-full relative bg-[#020617] rounded-2xl border border-slate-800 p-6 flex flex-col justify-center items-center">
+                <div class="absolute top-4 left-4 flex gap-2">
+                    <span class="px-2 py-1 bg-red-500/20 text-red-500 text-[10px] font-bold rounded flex items-center gap-1"><span class="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span> REC</span>
+                    <span class="px-2 py-1 bg-cyan-500/20 text-cyan-400 text-[10px] font-bold rounded">AI ACTIVE</span>
+                </div>
+                <div class="flex gap-8 w-full justify-center">
+                    <div class="text-center">
+                        <p class="text-5xl font-bold text-white mb-2">124</p>
+                        <p class="text-xs text-slate-500 uppercase tracking-widest">Total Slots</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-5xl font-bold text-red-400 mb-2">89</p>
+                        <p class="text-xs text-slate-500 uppercase tracking-widest">Occupied</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-5xl font-bold text-emerald-400 mb-2">35</p>
+                        <p class="text-xs text-slate-500 uppercase tracking-widest">Available</p>
+                    </div>
+                </div>
+                <div class="mt-8 w-full max-w-md">
+                    <div class="flex justify-between text-xs mb-1 text-slate-400"><span>Occupancy Rate</span><span>71.7%</span></div>
+                    <div class="w-full bg-slate-800 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-cyan-400 to-indigo-500 h-2 rounded-full" style="width: 71.7%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="future" class="space-y-12 reveal">
+            <h2 class="text-center text-3xl font-bold uppercase tracking-widest">Research-Grade <span class="text-cyan-400">Next Steps</span></h2>
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="flex-1 glass-panel p-8 rounded-2xl border-l-2 border-cyan-500">
+                    <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-vector-square text-cyan-400"></i> Automatic Slot Detection</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-4">Moving beyond manual polygon coordinates by using advanced segmentation models and line detection to auto-map parking grids.</p>
+                </div>
+                <div class="flex-1 glass-panel p-8 rounded-2xl border-l-2 border-indigo-500">
+                    <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-box text-indigo-400"></i> YOLO Object Detection</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-4">Implementing YOLOv8 for high-speed, real bounding boxes. The AI will send exact slot coordinates for the frontend to draw live overlay overlays.</p>
+                </div>
+                <div class="flex-1 glass-panel p-8 rounded-2xl border-l-2 border-purple-500">
+                    <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-chart-line text-purple-400"></i> Demand Forecasting</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-4">Applying Time Series forecasting to predict peak hours, allowing for deployment in multi-camera systems like malls or airports.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="text-center pt-20 border-t border-slate-800 reveal">
+            <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.6em] mb-12">System Developer</h2>
+            
+            <div class="flex flex-wrap justify-center mb-10">
+                <div class="flex flex-col items-center group">
+                    <div class="h-28 w-28 rounded-full p-1 bg-gradient-to-tr from-cyan-500 to-indigo-500 mb-6 group-hover:scale-105 transition duration-300 shadow-2xl relative">
+                        <div class="h-full w-full bg-slate-900 rounded-full flex items-center justify-center text-3xl">
+                            <i class="fas fa-code text-white"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">Snedon Aubrey Cutinha</h3>
+                    <p class="text-xs text-cyan-400 font-bold uppercase tracking-widest mt-2">Lead AI & Full-Stack Developer</p>
+                </div>
+            </div>
+            
+            <div class="max-w-2xl mx-auto glass-panel p-8 rounded-2xl border border-slate-700">
+                <p class="text-slate-400 text-sm leading-relaxed text-justify">
+                    <strong class="text-white">Project Summary:</strong> "We developed a real-time AI smart parking system that uses CCTV video to detect vehicle occupancy and display parking analytics on a web dashboard. The system integrates computer vision, Flask backend processing, and a React frontend to provide live monitoring and data visualization."
+                </p>
+            </div>
+
+            <div class="mt-12">
+                <a href="https://secure-rent-nest.lovable.app/" target="_blank" class="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-full font-bold uppercase tracking-widest text-sm transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+                    Launch Interactive Dashboard <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="py-8 text-center border-t border-slate-800 bg-[#02020a]">
+        <p class="text-[10px] font-bold text-slate-600 uppercase tracking-[0.4em]">Smart City Infrastructure Project</p>
+    </footer>
+
+    <script>
+        // Presentation Timer Logic (8 Minutes)
+        function initTimer() {
+            let totalSeconds = 0;
+            const timeDisplay = document.getElementById('time-display');
+            const timerContainer = document.getElementById('presenter-timer');
+            
+            const timer = setInterval(() => {
+                totalSeconds++;
+                let minutes = Math.floor(totalSeconds / 60);
+                let seconds = totalSeconds % 60;
+                
+                timeDisplay.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // 6 Minute Warning (360 seconds)
+                if(totalSeconds === 360) {
+                    timerContainer.classList.add('timer-alert');
+                }
+                
+                // 8 Minute Hard Stop (480 seconds)
+                if(totalSeconds >= 480) {
+                    clearInterval(timer);
+                    timeDisplay.innerText = "08:00";
+                    timerContainer.style.backgroundColor = "rgba(239, 68, 68, 0.9)";
+                    timerContainer.style.color = "#fff";
+                }
+            }, 1000);
+        }
+
+        // Scroll Reveal Animations
+        function initScrollAnimations() {
+            const reveals = document.querySelectorAll('.reveal');
+            const revealOnScroll = () => {
+                const windowHeight = window.innerHeight;
+                const elementVisible = 100;
+                reveals.forEach(reveal => {
+                    const elementTop = reveal.getBoundingClientRect().top;
+                    if (elementTop < windowHeight - elementVisible) {
+                        reveal.classList.add('active');
+                    }
+                });
+            }
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll();
+        }
+
+        function initPresentation() {
+            initTimer();
+            initScrollAnimations();
+        }
+    </script>
+</body>
+</html>
