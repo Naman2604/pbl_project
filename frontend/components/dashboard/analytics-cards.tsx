@@ -78,9 +78,8 @@ export function AnalyticsCards() {
 
   useEffect(() => {
     const fetchStats = () => {
-      const API = process.env.NEXT_PUBLIC_API_URL;
-
-      fetch(`${API}/api/stats`)        .then((res) => res.json())
+      fetch("https://pbl-project-s2qp.onrender.com/api/stats")
+        .then((res) => res.json())
         .then((data) => setStatsData(data))
         .catch((err) => console.error("API error:", err));
     };
