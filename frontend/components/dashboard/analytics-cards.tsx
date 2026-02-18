@@ -78,8 +78,9 @@ export function AnalyticsCards() {
 
   useEffect(() => {
     const fetchStats = () => {
-      fetch("http://127.0.0.1:5000/api/stats")
-        .then((res) => res.json())
+      const API = process.env.NEXT_PUBLIC_API_URL;
+
+      fetch(`${API}/api/stats`)        .then((res) => res.json())
         .then((data) => setStatsData(data))
         .catch((err) => console.error("API error:", err));
     };

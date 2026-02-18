@@ -51,7 +51,7 @@ export function CCTVPanel() {
 
           {/* 🎥 LIVE VIDEO STREAM FROM FLASK */}
           <img
-            src="http://127.0.0.1:5000/video_feed"
+            src="https://pbl-project-s2qp.onrender.com/video_feed"
             alt="Live CCTV Stream"
             className="absolute inset-0 h-full w-full object-cover"
           />

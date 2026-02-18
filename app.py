@@ -1,3 +1,5 @@
+from flask_cors import CORS
+CORS(app)
 from flask import Flask, Response, jsonify
 import cv2
 from detection import process_frame
