@@ -1,13 +1,15 @@
-from flask_cors import CORS
-CORS(app)
 from flask import Flask, Response, jsonify
+from flask_cors import CORS
 import cv2
+
 from detection import process_frame
 from analytics import get_stats, update_stats
 
-app = Flask(__name__)
+app = Flask(__name__)      
+CORS(app)                  
 
 camera = cv2.VideoCapture("parking.mp4")
+
 
 def generate_frames():
     while True:
@@ -31,13 +33,7 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/stats')
-def stats():
-    return jsonify(get_stats())
-from flask import jsonify
-from analytics import get_stats
-
-@app.route("/api/stats")
+@app.route('/api/stats')
 def api_stats():
     return jsonify(get_stats())
 
