@@ -5,26 +5,37 @@ import cv2
 from detection import process_frame
 from analytics import get_stats, update_stats
 
-app = Flask(__name__)      
-CORS(app)                  
+app = Flask(__name__)
+CORS(app)
 
-camera = cv2.VideoCapture("parking.mp4")
+VIDEO_PATH = "parking.mp4"
+camera     = cv2.VideoCapture(VIDEO_PATH)
 
 
 def generate_frames():
+    global camera
     while True:
         success, frame = camera.read()
+
+        # Loop video when it ends
         if not success:
-            break
+            camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            success, frame = camera.read()
+            if not success:
+                # Re-open if set() didn't work (some codecs)
+                camera.release()
+                camera = cv2.VideoCapture(VIDEO_PATH)
+                continue
 
         frame, slot_data = process_frame(frame)
         update_stats(slot_data)
 
         ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
+        if not ret:
+            continue
 
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
 
 @app.route('/video_feed')
