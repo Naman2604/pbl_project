@@ -2,7 +2,7 @@ stats = {
     "total": 10,
     "occupied": 0,
     "available": 10,
-    "occupancy": 0
+    "occupancy_rate": 0
 }
 
 def update_stats(slot_data):

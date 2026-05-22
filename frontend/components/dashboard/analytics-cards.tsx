@@ -94,7 +94,7 @@ export function AnalyticsCards() {
     {
       icon: <LayoutGrid className="h-5 w-5" />,
       label: "Total Slots",
-      value: statsData?.total || 0,
+      value: statsData?.total_slots || 0,
       color: "hsl(199, 89%, 48%)",
       delay: 0,
     },
