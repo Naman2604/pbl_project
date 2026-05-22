@@ -13,30 +13,20 @@ camera     = cv2.VideoCapture(VIDEO_PATH)
 
 
 def generate_frames():
-    global camera
     while True:
         success, frame = camera.read()
-
-        # Loop video when it ends
         if not success:
+            # Loop video back to start instead of breaking
             camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            success, frame = camera.read()
-            if not success:
-                # Re-open if set() didn't work (some codecs)
-                camera.release()
-                camera = cv2.VideoCapture(VIDEO_PATH)
-                continue
+            continue
 
         frame, slot_data = process_frame(frame)
         update_stats(slot_data)
 
         ret, buffer = cv2.imencode('.jpg', frame)
-        if not ret:
-            continue
-
+        frame = buffer.tobytes()
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():

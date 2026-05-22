@@ -1,5 +1,5 @@
 flask
-opencv-python-headless
-numpy
-gunicorn
 flask-cors
+opencv-python
+numpy
+ultralytics       # ← replaces haarcascade approach; includes YOLOv8
