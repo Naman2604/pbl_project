@@ -27,7 +27,7 @@
 
 The **Smart Parking Detection System** is a computer vision project that simulates an intelligent parking management solution using a CCTV feed (live or recorded). It processes video frames in real time to:
 
-- Detect vehicles using **OpenCV**
+- Detect vehicles using **YOLOv8** (Ultralytics) with **OpenCV** for video handling
 - Determine which parking slots are **occupied or available**
 - Generate **live analytics** (total slots, occupied, available, occupancy rate)
 - Stream the processed video feed to a **React-based web dashboard**
@@ -48,7 +48,7 @@ The system follows a clear processing pipeline from raw video to live dashboard:
 🖼️  OpenCV Frame Capture & Processing
          │
          ▼
-🚘  Vehicle Detection (contour/background subtraction)
+🚘  Vehicle Detection (YOLOv8)
          │
          ▼
 🅿️  Parking Slot Occupancy Analysis
@@ -73,10 +73,15 @@ The system follows a clear processing pipeline from raw video to live dashboard:
 ### Detection Logic (detection.py)
 
 The detection module works by:
-1. **Loading the video feed** — either a live CCTV stream or a `.mp4` test file
-2. **Defining parking slot regions** — each slot is a rectangular region of interest (ROI) mapped to real parking spaces in the frame
-3. **Analyzing each ROI per frame** — pixel intensity, contour detection, or background subtraction determines if a vehicle is present
-4. **Annotating the frame** — slots are color-coded (e.g., 🟢 green = free, 🔴 red = occupied) and overlaid on the video
+1. **Detecting vehicles** — YOLOv8 finds cars, motorcycles, buses and trucks in each frame
+2. **Loading parking slots** — slot rectangles come from `slots.json`, which `calibrate_slots.py` generates automatically from the video (a spot where a car stays parked is a slot)
+3. **Matching vehicles to slots** — each vehicle is assigned to at most one slot, the one it overlaps most (IoU)
+4. **Smoothing** — a slot only flips between free and occupied after the new state is seen 5 detections in a row, so the numbers don't flicker when YOLO misses a car for one frame
+5. **Annotating the frame** — slots are overlaid on the video (🟢 free, 🔴 occupied) with a summary bar
+
+A background thread in `app.py` does all of this ~3 times per second and keeps the newest annotated frame in memory, so the stats stay live even when nobody has the video open.
+
+> **Camera view matters.** Slots are fixed rectangles, so they only fit one camera view. The bundled `parking.mp4` changes camera angle after about frame 4650, so `slots.json` records `frame_start`/`frame_end` and the app loops only that range. If you use your own video, run `python calibrate_slots.py` (see below).
 
 ### Analytics Engine (analytics.py)
 
@@ -126,14 +131,15 @@ This data is exposed as JSON through the Flask API for the frontend to poll and 
 |------------|---------|
 | **Python 3** | Core backend language |
 | **Flask** | Lightweight web framework for API and video streaming |
-| **OpenCV** | Frame capture, vehicle detection, image processing |
+| **YOLOv8 (Ultralytics)** | Vehicle detection |
+| **OpenCV** | Video reading, drawing overlays, JPEG encoding |
 | **NumPy** | Numerical operations on image arrays |
 | **Gunicorn** | WSGI server for production deployment |
 
 ### Frontend
 | Technology | Purpose |
 |------------|---------|
-| **React** | Component-based UI framework |
+| **Next.js / React** | Dashboard UI framework |
 | **Tailwind CSS / CSS** | Styling and responsive layout |
 | **Fetch API** | Polling backend for live stats |
 
@@ -151,29 +157,23 @@ This data is exposed as JSON through the Flask API for the frontend to poll and 
 ```
 pbl_project/
 │
-├── app.py                  # Flask application entry point
-│                           # Defines routes: /video_feed, /api/stats
+├── app.py                  # Flask app: background video thread + routes
+│                           # /video_feed, /api/stats, /api/slots, /health
 │
-├── detection.py            # Core computer vision logic
-│                           # Loads video, defines slot ROIs, detects vehicles
+├── detection.py            # YOLOv8 vehicle detection + slot occupancy logic
+├── calibrate_slots.py      # Finds the parking slots in a video -> slots.json
+├── slots.json              # Slot rectangles + the video frame range they apply to
+├── analytics.py            # Thread-safe parking statistics
 │
-├── analytics.py            # Parking statistics engine
-│                           # Tracks occupied/free slots, computes occupancy %
-│
-├── parking.mp4             # Sample parking footage for local testing
-│
+├── parking.mp4             # Sample parking footage
+├── yolov8n.pt              # YOLOv8 nano weights
 ├── requirements.txt        # Python dependencies
 │
-├── templates/
-│   └── dashboard.html      # Optional server-side rendered dashboard (Jinja2)
-│
-├── frontend/               # React application (deployed separately on Vercel)
-│   ├── src/
-│   │   ├── App.jsx         # Root component
-│   │   ├── components/     # Dashboard UI components
-│   │   └── ...
-│   ├── package.json
-│   └── ...
+├── frontend/               # Next.js dashboard (deployed separately on Vercel)
+│   ├── components/dashboard/   # Cards, CCTV panel, live parking grid, charts
+│   ├── hooks/use-polling.ts    # Polls the backend without overlapping requests
+│   ├── lib/api.ts              # Backend URL (NEXT_PUBLIC_API_URL)
+│   └── .env.example
 │
 └── README.md
 ```
@@ -222,6 +222,11 @@ Key packages installed:
 python app.py
 ```
 
+(`slots.json` is already included for `parking.mp4`. For your own video run
+`python calibrate_slots.py --video your.mp4` first, open the generated
+`slots_preview.jpg` to check the boxes, and use `--end N` to stop before any
+camera cut.)
+
 The backend will start at:
 
 ```
@@ -231,6 +236,8 @@ http://localhost:5000
 You can now access:
 - **Live video feed:** `http://localhost:5000/video_feed`
 - **Parking stats API:** `http://localhost:5000/api/stats`
+- **Per-slot status:** `http://localhost:5000/api/slots`
+- **Health check:** `http://localhost:5000/health`
 
 ### 5. Run the Frontend (Optional — Local Development)
 
@@ -288,6 +295,25 @@ Returns the current parking analytics as a JSON object.
 | `occupied` | integer | Number of slots currently occupied |
 | `available` | integer | Number of slots currently free |
 | `occupancy_rate` | float | Percentage of slots in use |
+| `updated_at` | float | Unix time of the last detection |
+
+`total` and `occupancy` are also returned as deprecated aliases of `total_slots` and `occupancy_rate`.
+
+---
+
+### `GET /api/slots`
+
+Returns the live state of every tracked slot, in the same order as the labels on the video (`P1`, `P2`, ...).
+
+```json
+[{"id": "P1", "occupied": true}, {"id": "P2", "occupied": false}]
+```
+
+---
+
+### `GET /health`
+
+Always returns HTTP 200 with `status` (`ok` or `starting_or_degraded`), `video_open`, `slots_loaded`, `seconds_since_last_frame` and `last_error`. Use it first when something looks wrong.
 
 ---
 
@@ -300,8 +326,12 @@ The React frontend dashboard provides:
 | 🎥 **Live Video Feed** | Displays the MJPEG stream with slot overlays from the backend |
 | 🟢🔴 **Slot Status Grid** | Visual grid showing each slot's occupancy state in real time |
 | 📊 **Analytics Panel** | Shows total, occupied, and available slots with occupancy percentage |
-| 🔄 **Auto-refresh** | Polls `/api/stats` at regular intervals for up-to-date data |
+| 🔄 **Auto-refresh** | Polls `/api/stats` and `/api/slots` every second; shows a notice and retries if the backend is unreachable |
 | ☁️ **Cloud-ready** | Configured to connect to the Render-hosted backend when deployed |
+
+---
+
+> **Note:** the hourly-usage chart, zone utilization chart and AI-insights panel still use sample data from `frontend/lib/mock-data.ts`. The stat cards, the slot grid and the video are live.
 
 ---
 
@@ -312,7 +342,9 @@ The React frontend dashboard provides:
 1. Push your code to GitHub
 2. Create a new **Web Service** on [Render](https://render.com)
 3. Set the build command: `pip install -r requirements.txt`
-4. Set the start command: `gunicorn app:app`
+4. Set the start command: `gunicorn app:app --workers 1 --threads 16 --timeout 120`
+   - Keep `--workers 1` (the detector and stats live in one process) and use several `--threads`: every open video stream occupies one thread, so a plain `gunicorn app:app` (one worker, one thread) would block `/api/stats` while the video is open.
+   - YOLO needs RAM (PyTorch alone uses several hundred MB). Render's free 512 MB plan may run out of memory; if the service keeps restarting, use a larger instance. Free instances also sleep when idle and take about a minute to wake up.
 5. Render will assign a public URL (e.g., `https://your-app.onrender.com`)
 
 ### Frontend — Vercel
@@ -321,7 +353,7 @@ The React frontend dashboard provides:
 2. Import the project on [Vercel](https://vercel.com)
 3. Set the environment variable for the backend URL:
    ```
-   REACT_APP_API_URL=https://your-app.onrender.com
+   NEXT_PUBLIC_API_URL=https://your-app.onrender.com
    ```
 4. Vercel auto-builds and deploys on every push
 

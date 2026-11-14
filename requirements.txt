@@ -1,5 +1,7 @@
-flask
-flask-cors
-opencv-python
+flask>=3.0
+flask-cors>=4.0
+gunicorn>=22.0
 numpy
-ultralytics       # ← replaces haarcascade approach; includes YOLOv8
+# "headless" = no GUI libraries; avoids the `libGL.so.1` import error on servers (Render, Docker, ...)
+opencv-python-headless
+ultralytics

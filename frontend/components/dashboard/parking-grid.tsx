@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parkingSlots, type ParkingSlot } from "@/lib/mock-data";
+import { usePolling } from "@/hooks/use-polling";
 import { LayoutGrid } from "lucide-react";
 
-function SlotCell({ slot }: { slot: ParkingSlot }) {
+// One entry of GET /api/slots
+interface LiveSlot {
+  id: string; // "P1", "P2", ...
+  occupied: boolean;
+}
+
+function SlotCell({ slot }: { slot: LiveSlot }) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const isOccupied = slot.status === "occupied";
+  const isOccupied = slot.occupied;
 
   return (
     <button
@@ -20,7 +26,7 @@ function SlotCell({ slot }: { slot: ParkingSlot }) {
       } ${isHovered ? "scale-110 shadow-lg z-10" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      aria-label={`Slot ${slot.id}: ${slot.status}`}
+      aria-label={`Slot ${slot.id}: ${isOccupied ? "occupied" : "available"}`}
     >
       {slot.id}
       {isHovered && (
@@ -33,7 +39,8 @@ function SlotCell({ slot }: { slot: ParkingSlot }) {
 }
 
 export function ParkingGrid() {
-  const rows = ["A", "B", "C", "D", "E", "F"];
+  // Live slot states from the Flask backend (same data the CCTV overlay uses)
+  const { data: slots, isOffline } = usePolling<LiveSlot[]>("/api/slots", 1000);
 
   return (
     <Card className="border-border bg-card">
@@ -57,36 +64,19 @@ export function ParkingGrid() {
       </CardHeader>
       <CardContent className="p-3 pt-0">
         <div className="rounded-lg border border-border bg-background/50 p-4">
-          <div className="flex flex-col gap-2">
-            {rows.map((row) => (
-              <div key={row} className="flex items-center gap-2">
-                <span className="w-6 text-center font-mono text-xs font-bold text-muted-foreground">
-                  {row}
-                </span>
-                <div className="grid flex-1 grid-cols-10 gap-1.5">
-                  {parkingSlots
-                    .filter((s) => s.row === row)
-                    .map((slot) => (
-                      <SlotCell key={slot.id} slot={slot} />
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Row numbers at the bottom */}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="w-6" />
-            <div className="grid flex-1 grid-cols-10 gap-1.5">
-              {Array.from({ length: 10 }, (_, i) => (
-                <span
-                  key={i}
-                  className="text-center font-mono text-[10px] text-muted-foreground"
-                >
-                  {i + 1}
-                </span>
+          {slots && slots.length > 0 ? (
+            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-7">
+              {slots.map((slot) => (
+                <SlotCell key={slot.id} slot={slot} />
               ))}
             </div>
-          </div>
+          ) : (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              {isOffline
+                ? "Backend not reachable yet - retrying automatically…"
+                : "Waiting for live slot data…"}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

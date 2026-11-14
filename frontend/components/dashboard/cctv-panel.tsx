@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import { Camera, Circle, Maximize2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_URL } from "@/lib/api";
 
 export function CCTVPanel() {
   const [isRecording, setIsRecording] = useState(true);
+  // Bumping this reloads the <img>. A dropped stream (e.g. the backend was
+  // asleep) never recovers by itself, so onError retries every few seconds.
+  const [streamKey, setStreamKey] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,9 +55,11 @@ export function CCTVPanel() {
 
           {/* 🎥 LIVE VIDEO STREAM FROM FLASK */}
           <img
-            src="https://pbl-project-s2qp.onrender.com/video_feed"
+            key={streamKey}
+            src={`${API_URL}/video_feed?v=${streamKey}`}
             alt="Live CCTV Stream"
             className="absolute inset-0 h-full w-full object-cover"
+            onError={() => setTimeout(() => setStreamKey((k) => k + 1), 4000)}
           />
 
           {/* overlay gradient for professional look */}
@@ -62,7 +68,7 @@ export function CCTVPanel() {
           {/* Camera overlay info */}
           <div className="absolute bottom-3 left-3 flex items-center gap-2">
             <span className="rounded bg-background/80 px-2 py-1 font-mono text-[10px] text-foreground backdrop-blur-sm">
-              CAM-01 | AI ACTIVE | 1080p
+              CAM-01 | AI ACTIVE
             </span>
           </div>
 
