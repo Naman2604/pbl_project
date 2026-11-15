@@ -3,7 +3,8 @@ Vehicle detection and parking-slot occupancy.
 
 How it works
 ------------
-1. YOLOv8 finds vehicles in a frame.
+1. YOLOv8 (exported to ONNX, run with onnxruntime - no PyTorch needed, so it
+   fits in ~200 MB of RAM) finds vehicles in a frame.
 2. Each vehicle is matched to at most ONE parking slot (best overlap / IoU).
 3. A slot flips between free/occupied only after the new state has been seen
    for several detections in a row (debouncing), so the dashboard numbers
@@ -17,14 +18,15 @@ import os
 from pathlib import Path
 
 import cv2
-from ultralytics import YOLO
+import numpy as np
+import onnxruntime as ort
 
 log = logging.getLogger("parking.detection")
 
 BASE_DIR = Path(__file__).resolve().parent
 
 # ── Settings (override with environment variables if you like) ──────────────
-MODEL_PATH = os.getenv("YOLO_MODEL", str(BASE_DIR / "yolov8n.pt"))
+MODEL_PATH = os.getenv("YOLO_MODEL", str(BASE_DIR / "yolov8n.onnx"))
 SLOTS_PATH = Path(os.getenv("SLOTS_FILE", str(BASE_DIR / "slots.json")))
 
 # COCO class IDs for vehicles
@@ -32,8 +34,10 @@ VEHICLE_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 
 # Lower this if you're missing cars, raise it to reduce false positives
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.35"))
-# Smaller (e.g. 480) = faster but may miss distant cars. Larger = slower.
-INFER_IMGSZ = int(os.getenv("INFER_IMGSZ", "640"))
+# CPU threads used by the model (more = faster, but more CPU on small servers)
+ORT_THREADS = int(os.getenv("ORT_THREADS", "2"))
+# Overlapping boxes of the same class above this IoU are merged (same as YOLO's default)
+NMS_IOU_THRESHOLD = 0.7
 # A vehicle "belongs" to a slot when their boxes overlap at least this much (IoU)
 SLOT_IOU_THRESHOLD = float(os.getenv("SLOT_IOU_THRESHOLD", "0.4"))
 # A slot must show a new state this many detections in a row before it flips.
@@ -76,7 +80,14 @@ def load_slots(path=SLOTS_PATH):
 class ParkingDetector:
     def __init__(self, load_slot_file=True):
         log.info("Loading YOLO model: %s", MODEL_PATH)
-        self.model = YOLO(MODEL_PATH)
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = ORT_THREADS
+        opts.inter_op_num_threads = 1
+        opts.log_severity_level = 3          # warnings/errors only
+        self.session = ort.InferenceSession(MODEL_PATH, opts, providers=["CPUExecutionProvider"])
+        inp = self.session.get_inputs()[0]
+        self._input_name = inp.name
+        self._in_h, self._in_w = int(inp.shape[2]), int(inp.shape[3])   # 384 x 640 for the bundled model
         if load_slot_file:
             self.slots, self.frame_start, self.frame_end = load_slots()
         else:                       # used by calibrate_slots.py
@@ -93,16 +104,48 @@ class ParkingDetector:
         self._first = True
 
     # ── 1. detect ────────────────────────────────────────────────────────
+    def _preprocess(self, frame):
+        """Resize with padding ("letterbox") to the model's fixed input size."""
+        h, w = frame.shape[:2]
+        ratio = min(self._in_h / h, self._in_w / w)
+        new_w, new_h = round(w * ratio), round(h * ratio)
+        resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        left = int(round((self._in_w - new_w) / 2 - 0.1))
+        top = int(round((self._in_h - new_h) / 2 - 0.1))
+        canvas = np.full((self._in_h, self._in_w, 3), 114, dtype=np.uint8)
+        canvas[top:top + new_h, left:left + new_w] = resized
+        blob = canvas[:, :, ::-1].transpose(2, 0, 1)          # BGR->RGB, HWC->CHW
+        blob = np.ascontiguousarray(blob, dtype=np.float32)[None] / 255.0
+        return blob, ratio, left, top
+
     def detect(self, frame):
         """Return a list of (x1, y1, x2, y2, label, confidence) for vehicles."""
-        results = self.model(frame, imgsz=INFER_IMGSZ, verbose=False)[0]
+        fh, fw = frame.shape[:2]
+        blob, ratio, left, top = self._preprocess(frame)
+        out = self.session.run(None, {self._input_name: blob})[0][0].T   # (8400, 84)
+
+        class_scores = out[:, 4:]
+        cls_ids = class_scores.argmax(axis=1)
+        confs = class_scores[np.arange(len(cls_ids)), cls_ids]
+        keep = (confs >= CONFIDENCE_THRESHOLD) & np.isin(cls_ids, list(VEHICLE_CLASSES))
+        if not keep.any():
+            return []
+
+        boxes, confs, cls_ids = out[keep, :4], confs[keep], cls_ids[keep]
+        # (cx, cy, w, h) -> (x, y, w, h) for OpenCV's NMS
+        xywh = np.stack([boxes[:, 0] - boxes[:, 2] / 2, boxes[:, 1] - boxes[:, 3] / 2,
+                         boxes[:, 2], boxes[:, 3]], axis=1)
+        idx = cv2.dnn.NMSBoxesBatched(xywh.tolist(), confs.tolist(), cls_ids.tolist(),
+                                      CONFIDENCE_THRESHOLD, NMS_IOU_THRESHOLD)
+
         vehicles = []
-        for box in results.boxes:
-            cls_id = int(box.cls[0])
-            conf = float(box.conf[0])
-            if cls_id in VEHICLE_CLASSES and conf >= CONFIDENCE_THRESHOLD:
-                x1, y1, x2, y2 = map(float, box.xyxy[0])
-                vehicles.append((x1, y1, x2, y2, VEHICLE_CLASSES[cls_id], conf))
+        for i in np.array(idx).flatten():
+            x, y, w, h = xywh[i]
+            x1 = float(np.clip((x - left) / ratio, 0, fw))
+            y1 = float(np.clip((y - top) / ratio, 0, fh))
+            x2 = float(np.clip((x + w - left) / ratio, 0, fw))
+            y2 = float(np.clip((y + h - top) / ratio, 0, fh))
+            vehicles.append((x1, y1, x2, y2, VEHICLE_CLASSES[int(cls_ids[i])], float(confs[i])))
         return vehicles
 
     # ── 2. assign vehicles to slots ──────────────────────────────────────

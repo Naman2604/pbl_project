@@ -4,4 +4,5 @@ gunicorn>=22.0
 numpy
 # "headless" = no GUI libraries; avoids the `libGL.so.1` import error on servers (Render, Docker, ...)
 opencv-python-headless
-ultralytics
+# Runs the YOLO model (yolov8n.onnx) without PyTorch -> small enough for 512 MB servers
+onnxruntime

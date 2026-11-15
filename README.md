@@ -27,7 +27,7 @@
 
 The **Smart Parking Detection System** is a computer vision project that simulates an intelligent parking management solution using a CCTV feed (live or recorded). It processes video frames in real time to:
 
-- Detect vehicles using **YOLOv8** (Ultralytics) with **OpenCV** for video handling
+- Detect vehicles using **YOLOv8** (run through **ONNX Runtime**, no PyTorch) with **OpenCV** for video handling
 - Determine which parking slots are **occupied or available**
 - Generate **live analytics** (total slots, occupied, available, occupancy rate)
 - Stream the processed video feed to a **React-based web dashboard**
@@ -131,7 +131,7 @@ This data is exposed as JSON through the Flask API for the frontend to poll and 
 |------------|---------|
 | **Python 3** | Core backend language |
 | **Flask** | Lightweight web framework for API and video streaming |
-| **YOLOv8 (Ultralytics)** | Vehicle detection |
+| **YOLOv8 + ONNX Runtime** | Vehicle detection (light enough for 512 MB servers) |
 | **OpenCV** | Video reading, drawing overlays, JPEG encoding |
 | **NumPy** | Numerical operations on image arrays |
 | **Gunicorn** | WSGI server for production deployment |
@@ -166,7 +166,8 @@ pbl_project/
 ├── analytics.py            # Thread-safe parking statistics
 │
 ├── parking.mp4             # Sample parking footage
-├── yolov8n.pt              # YOLOv8 nano weights
+├── yolov8n.onnx            # YOLOv8 nano model used by the app (384x640 input)
+├── yolov8n.pt              # Original PyTorch weights (only needed to re-export the model)
 ├── requirements.txt        # Python dependencies
 │
 ├── frontend/               # Next.js dashboard (deployed separately on Vercel)
@@ -335,6 +336,19 @@ The React frontend dashboard provides:
 
 ---
 
+### Using a different YOLO model
+
+The app loads `yolov8n.onnx`. To try a more accurate (slower) model, export it once on your own machine and point the app at it:
+
+```bash
+pip install ultralytics
+python -c "from ultralytics import YOLO; YOLO('yolov8s.pt').export(format='onnx', imgsz=(384, 640), opset=12, simplify=True)"
+```
+
+Then set the environment variable `YOLO_MODEL=yolov8s.onnx` (re-run `calibrate_slots.py` afterwards, since slot boxes come from the detector's output). Larger models use more memory and CPU.
+
+---
+
 ## 🌐 Deployment
 
 ### Backend — Render
@@ -344,7 +358,7 @@ The React frontend dashboard provides:
 3. Set the build command: `pip install -r requirements.txt`
 4. Set the start command: `gunicorn app:app --workers 1 --threads 16 --timeout 120`
    - Keep `--workers 1` (the detector and stats live in one process) and use several `--threads`: every open video stream occupies one thread, so a plain `gunicorn app:app` (one worker, one thread) would block `/api/stats` while the video is open.
-   - YOLO needs RAM (PyTorch alone uses several hundred MB). Render's free 512 MB plan may run out of memory; if the service keeps restarting, use a larger instance. Free instances also sleep when idle and take about a minute to wake up.
+   - Memory: the app runs the model with ONNX Runtime instead of PyTorch and uses about 170-200 MB, which fits Render's free 512 MB plan. (An earlier PyTorch-based version ran out of memory there.) Free instances also sleep when idle and take about a minute to wake up.
 5. Render will assign a public URL (e.g., `https://your-app.onrender.com`)
 
 ### Frontend — Vercel
